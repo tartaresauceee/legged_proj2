@@ -68,6 +68,7 @@ t = np.arange(TEST_STEPS)*TIME_STEP
 
 # [TODO] initialize data structures to save CPG and robot states
 
+
 ############## Sample Gains
 # joint PD gains
 kp=np.array([100,100,100])
@@ -85,8 +86,8 @@ for j in range(TEST_STEPS):
   xs,zs = cpg.update()
 
   # [TODO] get current motor angles and velocities for joint PD, see GetMotorAngles(), GetMotorVelocities() in quadruped.py
-  # q = env.robot.GetMotorAngles()
-  # dq = env.robot.GetMotorVelocities()
+  q = env.robot.GetMotorAngles()
+  dq = env.robot.GetMotorVelocities()
 
   # loop through desired foot positions and calculate torques
   for i in range(4):
@@ -97,32 +98,39 @@ for j in range(TEST_STEPS):
     leg_xyz = np.array([xs[i], sideSign[i] * foot_y, zs[i]])
 
     # call inverse kinematics to get corresponding joint angles (see ComputeInverseKinematics() in quadruped.py)
-    leg_q = np.zeros(3) # [TODO] 
+    #leg_q = np.zeros(3) # [TODO] 
+    leg_q = env.robot.ComputeInverseKinematics(i, leg_xyz)
 
     # Add joint PD contribution to tau for leg i (Equation 4)
-    tau += np.zeros(3) # [TODO] 
+    #tau += np.zeros(3) # [TODO] 
+    tau += kp * (leg_q - q[3*i:3*i+3]) + kd * (0 - dq[3*i:3*i+3])
 
     # add Cartesian PD contribution
     if ADD_CARTESIAN_PD:
       # Get desired xyz position in leg frame (use ComputeJacobianAndPosition with the joint angles you just found above)
       # [TODO] 
+      _, d_pos = env.robot.ComputeJacobianAndPosition(i, leg_q)
 
       # Get current Jacobian and foot position in leg frame (see ComputeJacobianAndPosition() in quadruped.py)
       # [TODO] 
+      J, c_pos = env.robot.ComputeJacobianAndPosition(i, q[3*i:3*i+3])
 
       # Get current foot velocity in leg frame (Equation 2)
       # [TODO] 
+      c_vel= J @ dq[3 * i : 3 * i + 3]
 
       # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
       tau += np.zeros(3) # [TODO]
+      tau += J.T @ (kpCartesian @ (leg_xyz - d_pos) + kdCartesian @ (0 - c_vel))
 
     # Set tau for legi in action vector
     action[3*i:3*i+3] = tau
 
   # send torques to robot and simulate TIME_STEP seconds 
-  env.step(action) 
+  env.step(action)
 
   # [TODO] save any CPG or robot states
+
 
 ##################################################### 
 # PLOTS
