@@ -142,7 +142,9 @@ class HopfNetwork():
     gc = self._ground_clearance
     gp = self._ground_penetration
     x = - r * np.cos(theta) # [TODO]
-    z = -h + gc*np.sin(theta) if np.sin(theta) > 0 else -h + gp*np.sin(theta) # [TODO]
+    sin_theta = np.sin(theta)
+    z = -h + np.where(sin_theta > 0, gc * sin_theta, gp * sin_theta) # [TODO]
+
 
     # scale x by step length
     if not self.use_RL:
@@ -177,7 +179,7 @@ class HopfNetwork():
 
       # loop through other oscillators to add coupling (Equation 7)
       if self._couple:
-        sum_term = X[0, :] * self._coupling_strength[i, :] * np.sin(X[1, :] - theta - self.PHI[i, :])
+        sum_term = X[0, :] * self._coupling_strength * np.sin(X[1, :] - theta - self.PHI[i, :])
         theta_dot += np.sum(sum_term) # [TODO]
 
       # set X_dot[:,i]
