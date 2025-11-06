@@ -120,8 +120,8 @@ for j in range(TEST_STEPS):
       c_vel= J @ dq[3 * i : 3 * i + 3]
 
       # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-      tau += np.zeros(3) # [TODO]
-      tau += J.T @ (kpCartesian @ (leg_xyz - d_pos) + kdCartesian @ (0 - c_vel))
+      # Use current foot position (c_pos) when computing PD error (target - current)
+      tau += J.T @ (kpCartesian @ (d_pos - c_pos) + kdCartesian @ (0 - c_vel))
 
     # Set tau for legi in action vector
     action[3*i:3*i+3] = tau

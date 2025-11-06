@@ -48,9 +48,17 @@ class HopfNetwork():
   """
   def __init__(self,
                 mu=1**2,                 # intrinsic amplitude, converges to sqrt(mu)
-                omega_swing=5*2*np.pi,   # frequency in swing phase (can edit)
-                omega_stance=2*2*np.pi,  # frequency in stance phase (can edit)
-                gait="TROT",             # Gait, can be TROT, WALK, PACE, BOUND, etc.
+                # omega_swing=5*2*np.pi,   # frequency in swing phase (can edit)
+                # omega_stance=2*2*np.pi,  # frequency in stance phase (can edit)
+                # omega_swing=8*2*np.pi,   # frequency in swing phase (TROT)
+                # omega_stance=8*2*np.pi,  # frequency in stance phase (TROT)
+                # omega_swing=8*2*np.pi,   # frequency in swing phase (WALK)
+                # omega_stance=8*2*np.pi,  # frequency in stance phase (WALK)
+                # omega_swing=8*2*np.pi,   # frequency in swing phase (PACE)
+                # omega_stance=8*2*np.pi,  # frequency in stance phase (PACE)
+                omega_swing=4*2*np.pi,   # frequency in swing phase (BOUND)
+                omega_stance=2*2*np.pi,  # frequency in stance phase (BOUND)
+                gait="BOUND",             # Gait, can be TROT, WALK, PACE, BOUND, etc.
                 alpha=50,                # amplitude convergence factor
                 coupling_strength=1,     # coefficient to multiply coupling matrix
                 couple=True,             # whether oscillators should be coupled
@@ -79,7 +87,7 @@ class HopfNetwork():
 
     # set oscillator initial conditions  
     self.X[0,:] = np.random.rand(4) * .1
-    self.X[1,:] = self.PHI[0,:] 
+    self.X[1,:] = self.PHI[0,:]
 
     # save body and foot shaping
     self._ground_clearance = ground_clearance 
@@ -137,7 +145,7 @@ class HopfNetwork():
     
     # map CPG variables to Cartesian foot xz positions (Equations 8, 9) 
     r = self.get_r()
-    theta = self.get_theta()
+    theta = self.get_theta() % (2*np.pi)
     h = self._robot_height
     gc = self._ground_clearance
     gp = self._ground_penetration
