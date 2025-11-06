@@ -67,7 +67,7 @@ TEST_STEPS = int(10 / (TIME_STEP))
 t = np.arange(TEST_STEPS)*TIME_STEP
 
 # [TODO] initialize data structures to save CPG and robot states
-
+leg_pos = np.zeros((TEST_STEPS, 4, 3))
 
 ############## Sample Gains
 # joint PD gains
@@ -130,12 +130,19 @@ for j in range(TEST_STEPS):
   env.step(action)
 
   # [TODO] save any CPG or robot states
-
+  for i in range(4):
+    _, pos = env.robot.ComputeJacobianAndPosition(i, q[3*i:3*i+3])
+    leg_pos[j, i, :] = pos
 
 ##################################################### 
 # PLOTS
 #####################################################
 # [TODO] Create your plots
+
+plt.figure()
+plt.plot(leg_pos[:, 0, 0], leg_pos[:, 0, 1])
+plt.plot(leg_pos[0, 0, 0], leg_pos[0, 0, 1], color='red', linewidth=5, marker=".")
+plt.show()
 
 # example
 # fig = plt.figure()
