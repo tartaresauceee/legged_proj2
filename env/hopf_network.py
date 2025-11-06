@@ -99,19 +99,19 @@ class HopfNetwork():
     """ For coupling oscillators in phase space. 
     [TODO] Update all coupling matrices.
     """
-    self.PHI_trot = np.array([[0, -0.5, -0.5, 0],
+    self.PHI_trot = 2 * np.pi * np.array([[0, -0.5, -0.5, 0],
                               [0.5, 0, 0, 0.5],
                               [0.5, 0, 0, 0.5],
                               [0, -0.5, -0.5, 0]]) # [TODO]
-    self.PHI_walk = np.array([[0, -0.5, -0.25, 0.25],
+    self.PHI_walk = 2 * np.pi * np.array([[0, -0.5, -0.25, 0.25],
                               [0.5, 0, 0.25, 0.75],
                               [0.25, -0.25, 0, 0.5],
                               [-0.25, -0.75, -0.5, 0]]) # [TODO]
-    self.PHI_bound = np.array([[0, 0, -0.5, -0.5],
+    self.PHI_bound = 2 * np.pi * np.array([[0, 0, -0.5, -0.5],
                                [0, 0, -0.5, -0.5],
                                [0.5, 0.5, 0, 0],
                                [0.5, 0.5, 0, 0]]) # [TODO]
-    self.PHI_pace = np.array([[0, -0.5, 0, -0.5],
+    self.PHI_pace = 2 * np.pi * np.array([[0, -0.5, 0, -0.5],
                               [0.5, 0, 0.5, 0],
                               [0, -0.5, 0, -0.5],
                               [0.5, 0, 0.5, 0]]) # [TODO]
