@@ -68,7 +68,6 @@ t = np.arange(TEST_STEPS)*TIME_STEP
 
 # [TODO] initialize data structures to save CPG and robot states
 
-
 ############## Sample Gains
 # joint PD gains
 kp=np.array([100,100,100])
@@ -117,7 +116,7 @@ for j in range(TEST_STEPS):
 
       # Get current foot velocity in leg frame (Equation 2)
       # [TODO] 
-      c_vel= J @ dq[3 * i : 3 * i + 3]
+      c_vel= J @ dq[3*i : 3*i+3]
 
       # Calculate torque contribution from Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
       # Use current foot position (c_pos) when computing PD error (target - current)
