@@ -402,8 +402,12 @@ class QuadrupedGymEnv(gym.Env):
   def _reward_lr_course(self):
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
-    
-    return 0
+    dist2goal, angle2goal = self.get_distance_and_angle_to_goal()
+    base_vel = np.abs(self.robot.GetBaseLinearVelocity())
+    base_orientation = self.robot.GetBaseOrientationRollPitchYaw()
+    roll, pitch, yaw = base_orientation[:3]
+
+    return - 10 * dist2goal - 2 * angle2goal - 5 * (roll + pitch) - 2 * np.sum(base_vel)
 
   def _reward(self):
     """ Get reward depending on task"""
