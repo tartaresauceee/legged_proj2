@@ -398,12 +398,14 @@ class QuadrupedGymEnv(gym.Env):
   def _reward_lr_course(self):
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
-    dist2goal, angle2goal = self.get_distance_and_angle_to_goal()
-    base_vel = np.abs(self.robot.GetBaseLinearVelocity())
+    vel_desired = np.array([0.5, 0, 0])
+    base_vel = self.robot.GetBaseLinearVelocity()
+    vel_error = np.abs(base_vel - vel_desired)
+
     base_orientation = self.robot.GetBaseOrientationRollPitchYaw()
     roll, pitch, yaw = base_orientation[:3]
 
-    return - (10 * dist2goal + 2 * angle2goal + 5 * (roll + pitch) + 2 * np.sum(base_vel))
+    return - (2 * (roll + pitch) + 10 * vel_error[0] + 5 * vel_error[1] + 5 * vel_error[2])
 
   def _reward(self):
     """ Get reward depending on task"""
@@ -674,6 +676,7 @@ class QuadrupedGymEnv(gym.Env):
       if self.goal_id is not None: 
         self._pybullet_client.removeBody(self.goal_id)
     except:
+      print("pass reset goal")
       pass
     
     if self._test_flagrun:
