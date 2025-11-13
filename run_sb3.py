@@ -110,7 +110,7 @@ ppo_config = {  "gamma":0.99,
                 "clip_range":0.2, 
                 "clip_range_vf":1,
                 "verbose":1, 
-                "tensorboard_log":None, 
+                "tensorboard_log":"tb_logs/", 
                 "_init_setup_model":True, 
                 "policy_kwargs":policy_kwargs,
                 "device": gpu_arg}
@@ -146,7 +146,7 @@ if LOAD_NN:
     print("\nLoaded model", model_name, "\n")
 
 # Learn and save (may need to train for longer)
-model.learn(total_timesteps=1000000, log_interval=1,callback=checkpoint_callback)
+model.learn(total_timesteps=100000, log_interval=1,callback=checkpoint_callback)
 
 # Don't forget to save the VecNormalize statistics when saving the agent
 model.save( os.path.join(SAVE_PATH, "rl_model" ) ) 

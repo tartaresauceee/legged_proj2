@@ -403,7 +403,7 @@ class QuadrupedGymEnv(gym.Env):
     base_orientation = self.robot.GetBaseOrientationRollPitchYaw()
     roll, pitch, yaw = base_orientation[:3]
 
-    return - 10 * dist2goal - 2 * angle2goal - 5 * (roll + pitch) - 2 * np.sum(base_vel)
+    return - (10 * dist2goal + 2 * angle2goal + 5 * (roll + pitch) + 2 * np.sum(base_vel))
 
   def _reward(self):
     """ Get reward depending on task"""

@@ -67,10 +67,7 @@ TEST_STEPS = int(10 / (TIME_STEP))
 t = np.arange(TEST_STEPS)*TIME_STEP
 
 # [TODO] initialize data structures to save CPG and robot states
-<<<<<<< HEAD
-=======
 leg_pos = np.zeros((TEST_STEPS, 4, 3))
->>>>>>> cf56bcde301b98f25e7f97bdd9adf0a687224df1
 
 ############## Sample Gains
 # joint PD gains
