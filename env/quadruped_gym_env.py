@@ -230,19 +230,15 @@ class QuadrupedGymEnv(gym.Env):
       # Note 50 is arbitrary below, you may have more or less
       # If using CPG-RL, remember to include limits on these
       # foot_pos_x / foot_pos_y / foot_pos_z / foot_vel_x / foot_vel_y / foot_vel_z / base_orientation /
-      observation_high = (np.concatenate((np.array([np.sin(self._robot_config.LOWER_ANGLE_JOINT[1]) * (self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH),
-                                          np.cos(self._robot_config.LOWER_ANGLE_JOINT[1]) * (self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH),
-                                          np.sin(self._robot_config.LOWER_ANGLE_JOINT[0]) * (self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH)] * self._robot_config.NUM_LEGS),
-                                          np.array([self._robot_config.VELOCITY_LIMITS * (self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH),
+      observation_high = (np.concatenate((np.array([self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH,
+                                          self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH,
+                                          self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH] * self._robot_config.NUM_LEGS),
                                           self._robot_config.VELOCITY_LIMITS * (self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH),
-                                          self._robot_config.VELOCITY_LIMITS * (self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH)] * self._robot_config.NUM_LEGS),
                                           np.array([1.0]*4))) + OBSERVATION_EPS)
-      observation_low = (np.concatenate((np.array([np.sin(self._robot_config.UPPER_ANGLE_JOINT[1]) * (self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH),
-                                          np.cos(self._robot_config.UPPER_ANGLE_JOINT[1]) * (self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH),
-                                          np.sin(self._robot_config.UPPER_ANGLE_JOINT[0]) * (self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH)] * self._robot_config.NUM_LEGS),
-                                          np.array([-self._robot_config.VELOCITY_LIMITS * (self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH),
+      observation_low = (np.concatenate((-np.array([self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH,
+                                          self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH,
+                                          self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH] * self._robot_config.NUM_LEGS),
                                           -self._robot_config.VELOCITY_LIMITS * (self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH),
-                                          -self._robot_config.VELOCITY_LIMITS * (self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH)] * self._robot_config.NUM_LEGS),
                                           np.array([-1.0]*4))) - OBSERVATION_EPS)
     
     else:
