@@ -401,11 +401,26 @@ class QuadrupedGymEnv(gym.Env):
     vel_desired = np.array([0.5, 0, 0])
     base_vel = self.robot.GetBaseLinearVelocity()
     vel_error = np.abs(base_vel - vel_desired)
+    rew_vel_x = -10 * vel_error[0]
+    rew_vel_y = -5 * vel_error[1]
+    rew_vel_z = -5 * vel_error[2]
 
     base_orientation = self.robot.GetBaseOrientationRollPitchYaw()
     roll, pitch, yaw = base_orientation[:3]
+    rew_roll = -2 * roll
+    rew_pitch = -2 * pitch
+    rew_yaw = -3 * yaw
 
-    return - (2 * (roll + pitch) + 10 * vel_error[0] + 5 * vel_error[1] + 5 * vel_error[2])
+    self.reward_info = {
+      'vel_x': rew_vel_x,
+      'vel_y': rew_vel_y,
+      'vel_z': rew_vel_z,
+      'roll': rew_roll,
+      'pitch': rew_pitch,
+      'yaw': rew_yaw,
+    }
+
+    return rew_roll + rew_pitch + rew_yaw + rew_vel_x + rew_vel_y + rew_vel_z
 
   def _reward(self):
     """ Get reward depending on task"""
