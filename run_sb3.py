@@ -52,7 +52,7 @@ from env.quadruped_gym_env import QuadrupedGymEnv
 
 LEARNING_ALG = "PPO" # or "SAC"
 LOAD_NN = False # if you want to initialize training with a previous model 
-NUM_ENVS = 3    # how many pybullet environments to create for data collection
+NUM_ENVS = 1   # how many pybullet environments to create for data collection
 USE_GPU = False # make sure to install all necessary drivers 
 
 # after implementing, you will want to test how well the agent learns with your MDP: 
@@ -117,7 +117,7 @@ policy_kwargs = dict(net_arch=[256,256]) # act_fun=tf.nn.tanh
 
 # What are these hyperparameters? Check here: https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
 n_steps = 4096 
-learning_rate = lambda f: 1e-3
+learning_rate = lambda f: 1e-4
 ppo_config = {  "gamma":0.99, 
                 "n_steps": int(n_steps/NUM_ENVS), 
                 "ent_coef":0.0, 
