@@ -411,15 +411,15 @@ class QuadrupedGymEnv(gym.Env):
     vel_desired = np.array([0.5, 0, 0])
     base_vel = self.robot.GetBaseLinearVelocity()
     vel_error = np.abs(base_vel - vel_desired)
-    rew_vel_x = -10 * vel_error[0]
-    rew_vel_y = -5 * vel_error[1]
-    rew_vel_z = -5 * vel_error[2]
+    rew_vel_x = -0.2 * vel_error[0]
+    rew_vel_y = -0.1 * vel_error[1]
+    rew_vel_z = -0.1 * vel_error[2]
 
     base_orientation = self.robot.GetBaseOrientationRollPitchYaw()
     roll, pitch, yaw = base_orientation[:3]
-    rew_roll = -2 * np.abs(roll)
-    rew_pitch = -2 * np.abs(pitch)
-    rew_yaw = -3 * np.abs(yaw)
+    rew_roll = -0.02 * np.abs(roll)
+    rew_pitch = -0.02 * np.abs(pitch)
+    rew_yaw = -0.05 * np.abs(yaw)
 
     if self.is_fallen:
       termination_reward = -1
