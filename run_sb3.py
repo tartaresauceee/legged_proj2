@@ -90,14 +90,18 @@ class TensorboardCallback(BaseCallback):
     def _on_step(self) -> bool:
         # Access the info dict from the environment
         infos = self.locals.get("infos", [])
-        for env_idx, info in enumerate(infos):
-            if info is None:
-                continue
-            if "reward_info" in info:
-                reward_info = info["reward_info"]
-                # record to SB3 logger (TensorBoard)
-                for key, value in reward_info.items():
-                    self.logger.record(f"reward/{key}", value)
+        dones = self.locals.get("dones", [])
+
+        for env_idx, done in enumerate(dones):
+            if done:
+                info = infos[env_idx]
+                if info is None:
+                    continue
+                if "reward_info" in info:
+                    reward_info = info["reward_info"]
+                    # record to SB3 logger (TensorBoard)
+                    for key, value in reward_info.items():
+                        self.logger.record(f"reward/{key}", value)
         return True
 
 # create Vectorized gym environment

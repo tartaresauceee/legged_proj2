@@ -309,7 +309,12 @@ class QuadrupedGymEnv(gym.Env):
     ret = {'base_pos': self.robot.GetBasePosition()}
 
     if hasattr(self, "reward_info"):
-      ret["reward_info"] = self.reward_info
+      for key, _ in self.reward_info.items():
+        if "reward_info" not in ret:
+          ret["reward_info"] = {}
+        if key not in ret["reward_info"]:
+          ret["reward_info"][key] = 0
+        ret["reward_info"][key] += self.reward_info[key]
 
     return ret
 
@@ -411,20 +416,19 @@ class QuadrupedGymEnv(gym.Env):
     vel_desired = np.array([0.5, 0, 0])
     base_vel = self.robot.GetBaseLinearVelocity()
     vel_error = np.abs(base_vel - vel_desired)
-    rew_vel_x = -0.2 * vel_error[0]
-    rew_vel_y = -0.1 * vel_error[1]
-    rew_vel_z = -0.1 * vel_error[2]
+    rew_vel_x = -0.02 * vel_error[0]
+    rew_vel_y = -0.01 * vel_error[1]
+    rew_vel_z = -0.01 * vel_error[2]
 
     base_orientation = self.robot.GetBaseOrientationRollPitchYaw()
     roll, pitch, yaw = base_orientation[:3]
-    rew_roll = -0.02 * np.abs(roll)
-    rew_pitch = -0.02 * np.abs(pitch)
-    rew_yaw = -0.05 * np.abs(yaw)
+    rew_roll = -0.002 * np.abs(roll)
+    rew_pitch = -0.002 * np.abs(pitch)
+    rew_yaw = -0.005 * np.abs(yaw)
 
+    rew_termination = 0
     if self.is_fallen:
-      termination_reward = -1
-    else:
-      termination_reward = 0
+      rew_termination = -100
 
     self.reward_info = {
       'vel_x': rew_vel_x,
@@ -433,10 +437,10 @@ class QuadrupedGymEnv(gym.Env):
       'roll': rew_roll,
       'pitch': rew_pitch,
       'yaw': rew_yaw,
-      'termination': termination_reward
+      'termination': rew_termination
     }
 
-    return rew_roll + rew_pitch + rew_yaw + rew_vel_x + rew_vel_y + rew_vel_z + termination_reward
+    return rew_roll + rew_pitch + rew_yaw + rew_vel_x + rew_vel_y + rew_vel_z + rew_termination
 
   def _reward(self):
     """ Get reward depending on task"""
@@ -698,6 +702,9 @@ class QuadrupedGymEnv(gym.Env):
     
     if self._is_record_video:
       self.recordVideoHelper()
+
+    if hasattr(self, "reward_info"):
+      self.reward_info = {k: 0 for k in self.reward_info}
     
     return self._noisy_observation(), self._get_info()
 
