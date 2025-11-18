@@ -89,10 +89,15 @@ class TensorboardCallback(BaseCallback):
 
     def _on_step(self) -> bool:
         # Access the info dict from the environment
-        reward_info = self.locals.get("reward_info")
-        print(self.training_env.reward_info)
-        for reward_name, reward_value in reward_info.items():
-            self.logger.record(f"reward/{reward_name}", reward_value)
+        infos = self.locals.get("infos", [])
+        for env_idx, info in enumerate(infos):
+            if info is None:
+                continue
+            if "reward_info" in info:
+                reward_info = info["reward_info"]
+                # record to SB3 logger (TensorBoard)
+                for key, value in reward_info.items():
+                    self.logger.record(f"reward/{key}", value)
         return True
 
 # create Vectorized gym environment
@@ -161,7 +166,7 @@ if LOAD_NN:
     print("\nLoaded model", model_name, "\n")
 
 # Learn and save (may need to train for longer)
-model.learn(total_timesteps=3e5, log_interval=1,callback=checkpoint_callback)
+model.learn(total_timesteps=3e5, log_interval=1,callback=[checkpoint_callback, TensorboardCallback()])
 
 # Don't forget to save the VecNormalize statistics when saving the agent
 model.save( os.path.join(SAVE_PATH, "rl_model" ) ) 

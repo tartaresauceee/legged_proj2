@@ -306,7 +306,12 @@ class QuadrupedGymEnv(gym.Env):
     return observation
 
   def _get_info(self) -> dict:
-    return {'base_pos': self.robot.GetBasePosition()} 
+    ret = {'base_pos': self.robot.GetBasePosition()}
+
+    if hasattr(self, "reward_info"):
+      ret["reward_info"] = self.reward_info
+
+    return ret
 
   ######################################################################################
   # Termination and reward
@@ -416,7 +421,22 @@ class QuadrupedGymEnv(gym.Env):
     rew_pitch = -2 * np.abs(pitch)
     rew_yaw = -3 * np.abs(yaw)
 
-    return rew_roll + rew_pitch + rew_yaw + rew_vel_x + rew_vel_y + rew_vel_z
+    if self.is_fallen:
+      termination_reward = -1
+    else:
+      termination_reward = 0
+
+    self.reward_info = {
+      'vel_x': rew_vel_x,
+      'vel_y': rew_vel_y,
+      'vel_z': rew_vel_z,
+      'roll': rew_roll,
+      'pitch': rew_pitch,
+      'yaw': rew_yaw,
+      'termination': termination_reward
+    }
+
+    return rew_roll + rew_pitch + rew_yaw + rew_vel_x + rew_vel_y + rew_vel_z + termination_reward
 
   def _reward(self):
     """ Get reward depending on task"""
