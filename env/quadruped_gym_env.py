@@ -412,18 +412,9 @@ class QuadrupedGymEnv(gym.Env):
 
     base_orientation = self.robot.GetBaseOrientationRollPitchYaw()
     roll, pitch, yaw = base_orientation[:3]
-    rew_roll = -2 * roll
-    rew_pitch = -2 * pitch
-    rew_yaw = -3 * yaw
-
-    self.reward_info = {
-      'vel_x': rew_vel_x,
-      'vel_y': rew_vel_y,
-      'vel_z': rew_vel_z,
-      'roll': rew_roll,
-      'pitch': rew_pitch,
-      'yaw': rew_yaw,
-    }
+    rew_roll = -2 * np.abs(roll)
+    rew_pitch = -2 * np.abs(pitch)
+    rew_yaw = -3 * np.abs(yaw)
 
     return rew_roll + rew_pitch + rew_yaw + rew_vel_x + rew_vel_y + rew_vel_z
 
