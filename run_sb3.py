@@ -41,6 +41,7 @@ from datetime import datetime
 from stable_baselines3.common.vec_env import DummyVecEnv, VecNormalize
 from stable_baselines3 import PPO, SAC
 from stable_baselines3.common.env_util import make_vec_env
+from stable_baselines3.common.callbacks import BaseCallback
 
 # utils
 from utils.utils import CheckpointCallback
@@ -51,7 +52,7 @@ from env.quadruped_gym_env import QuadrupedGymEnv
 
 LEARNING_ALG = "PPO" # or "SAC"
 LOAD_NN = False # if you want to initialize training with a previous model 
-NUM_ENVS = 1    # how many pybullet environments to create for data collection
+NUM_ENVS = 3    # how many pybullet environments to create for data collection
 USE_GPU = False # make sure to install all necessary drivers 
 
 # after implementing, you will want to test how well the agent learns with your MDP: 
@@ -81,6 +82,24 @@ os.makedirs(SAVE_PATH, exist_ok=True)
 # checkpoint to save policy network periodically
 checkpoint_callback = CheckpointCallback(save_freq=30000, save_path=SAVE_PATH,name_prefix='rl_model', verbose=2)
 
+# Tensorboard Callback
+class TensorboardCallback(BaseCallback):
+    def __init__(self, verbose=0):
+        super().__init__(verbose)
+
+    def _on_step(self) -> bool:
+        # Access the info dict from the environment
+        infos = self.locals.get("infos", [])
+        for env_idx, info in enumerate(infos):
+            if info is None:
+                continue
+            if "reward_info" in info:
+                reward_info = info["reward_info"]
+                # record to SB3 logger (TensorBoard)
+                for key, value in reward_info.items():
+                    self.logger.record(f"reward/{key}", value)
+        return True
+
 # create Vectorized gym environment
 env = lambda: QuadrupedGymEnv(**env_configs)  
 env = make_vec_env(env, monitor_dir=SAVE_PATH,n_envs=NUM_ENVS)
@@ -98,7 +117,7 @@ policy_kwargs = dict(net_arch=[256,256]) # act_fun=tf.nn.tanh
 
 # What are these hyperparameters? Check here: https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
 n_steps = 4096 
-learning_rate = lambda f: 1e-4 
+learning_rate = lambda f: 1e-3
 ppo_config = {  "gamma":0.99, 
                 "n_steps": int(n_steps/NUM_ENVS), 
                 "ent_coef":0.0, 
@@ -147,7 +166,7 @@ if LOAD_NN:
     print("\nLoaded model", model_name, "\n")
 
 # Learn and save (may need to train for longer)
-model.learn(total_timesteps=1000000, log_interval=1,callback=checkpoint_callback)
+model.learn(total_timesteps=3e5, log_interval=1,callback=[checkpoint_callback, TensorboardCallback()])
 
 # Don't forget to save the VecNormalize statistics when saving the agent
 model.save( os.path.join(SAVE_PATH, "rl_model" ) ) 
