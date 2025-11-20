@@ -229,21 +229,19 @@ class QuadrupedGymEnv(gym.Env):
       # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
       # If using CPG-RL, remember to include limits on these
-      # foot_pos_x / foot_pos_y / foot_pos_z / foot_vel_x / foot_vel_y / foot_vel_z / base_orientation / base_velocity
-      max_foot_pos_xyz = np.array([self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH,
-                              self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH,
-                              self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH] * self._robot_config.NUM_LEGS)
-      max_foot_vel_xyz = self._robot_config.VELOCITY_LIMITS * (self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH)
-      base_ori_lim = np.array([1.0]*4)
-      base_vel_lim = np.array([5.0]*3)
-      observation_high = (np.concatenate((max_foot_pos_xyz,
-                                          max_foot_vel_xyz,
-                                          base_ori_lim,
-                                          base_vel_lim)) + OBSERVATION_EPS)
-      observation_low = (np.concatenate((-max_foot_pos_xyz,
-                                          -max_foot_vel_xyz,
-                                          -base_ori_lim,
-                                          -base_vel_lim)) - OBSERVATION_EPS)
+      # joint_angle / joint_velocity / base_orientation 
+      max_joint_angle = self._robot_config.UPPER_ANGLE_JOINT
+      min_joint_angle = self._robot_config.LOWER_ANGLE_JOINT
+      max_joint_vel = self._robot_config.VELOCITY_LIMITS
+      min_joint_vel = -self._robot_config.VELOCITY_LIMITS
+      max_base_ori = np.array([1.0]*4)
+      min_base_ori = np.array([-1.0]*4)
+      observation_high = (np.concatenate((max_joint_angle,
+                                          max_joint_vel,
+                                          max_base_ori)) + OBSERVATION_EPS)
+      observation_low = (np.concatenate((min_joint_angle,
+                                          min_joint_vel,
+                                          min_base_ori)) - OBSERVATION_EPS)
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -273,24 +271,9 @@ class QuadrupedGymEnv(gym.Env):
       # if using the CPG, you can include states with self._cpg.get_r(), for example
       # 50 is arbitrary
       # return foot cartesian positions and velocities (in leg frames) + base orientation
-      pos_list = []
-      vel_list = []
-      # get global arrays once
-      motor_vels = np.asarray(self.robot.GetMotorVelocities())
-      for i in range(4):
-        J, pos = self.robot.ComputeJacobianAndPosition(i)
-        pos_list.append(pos)
-        # joint velocities for this leg
-        dq_leg = motor_vels[3*i:3*i+3]
-        # foot linear velocity in leg frame (v = J * qdot)
-        foot_vel = J @ dq_leg
-        vel_list.append(foot_vel)
-
-      pos_flat = np.concatenate(pos_list)
-      vel_flat = np.concatenate(vel_list)
-      base_orn = self.robot.GetBaseOrientation()
-      base_vel = self.robot.GetBaseLinearVelocity()
-      self._observation = np.concatenate((pos_flat, vel_flat, base_orn, base_vel))
+      self._observation = np.concatenate((self.robot.GetMotorAngles(), 
+                                          self.robot.GetMotorVelocities(),
+                                          self.robot.GetBaseOrientation() ))
     else:
       raise ValueError("observation space not defined or not intended")
 
