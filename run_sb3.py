@@ -170,7 +170,7 @@ if LOAD_NN:
     print("\nLoaded model", model_name, "\n")
 
 # Learn and save (may need to train for longer)
-model.learn(total_timesteps=3e5, log_interval=1,callback=[checkpoint_callback, TensorboardCallback()])
+model.learn(total_timesteps=1e6, log_interval=1,callback=[checkpoint_callback, TensorboardCallback()])
 
 # Don't forget to save the VecNormalize statistics when saving the agent
 model.save( os.path.join(SAVE_PATH, "rl_model" ) ) 
