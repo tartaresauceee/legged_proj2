@@ -394,44 +394,29 @@ class QuadrupedGymEnv(gym.Env):
   def _reward_lr_course(self):
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
-    vel_desired = np.array([0.5, 0, 0])
-    base_vel = self.robot.GetBaseLinearVelocity()
-    vel_error = np.abs(base_vel - vel_desired)
-    rew_vel_x = -0.05 * vel_error[0]
-    rew_vel_y = -0.0 * vel_error[1]
-    rew_vel_z = -0.0 * vel_error[2]
+    des_vel_x = 0.5
+    vel_tracking_reward = 0.5 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
+    
+    # minimize yaw (go straight)
+    yaw_reward = -0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2]) 
+    
+    # don't drift laterally 
+    drift_reward = -0.1 * abs(self.robot.GetBasePosition()[1]) 
+    
+    # minimize energy 
+    energy_reward = 0 
 
-    base_orientation = self.robot.GetBaseOrientationRollPitchYaw()
-    roll, pitch, yaw = base_orientation[:3]
-    rew_roll = -0.00 * np.abs(roll)
-    rew_pitch = -0.00 * np.abs(pitch)
-    rew_yaw = -0.005 * np.abs(yaw)
+    for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
+      energy_reward += np.abs(np.dot(tau,vel)) * self._time_step
 
-    rew_termination = 0
-    rew_step = 0
-    if self.is_fallen():
-      rew_termination = -1e3
-    else:
-      rew_step = 0.0
+    reward = vel_tracking_reward \
+            + yaw_reward \
+            + drift_reward \
+            - 0.05 * energy_reward \
+            - 0.2 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
 
-    self.reward_info = {
-      'vel_x': rew_vel_x,
-      'vel_y': rew_vel_y,
-      'vel_z': rew_vel_z,
-      'roll': rew_roll,
-      'pitch': rew_pitch,
-      'yaw': rew_yaw,
-      'termination': rew_termination,
-      'step': rew_step,
-    }
-
-    for k, v in self.reward_info.items():
-      if k not in self.episode_reward_info:
-        self.episode_reward_info[k] = 0
-      self.episode_reward_info[k] += v
-
-    return rew_roll + rew_pitch + rew_yaw + rew_vel_x + rew_vel_y + rew_vel_z + rew_termination + rew_step
-
+    return max(reward,0) # keep rewards positive
+  
   def _reward(self):
     """ Get reward depending on task"""
     if self._TASK_ENV == "FWD_LOCOMOTION":
