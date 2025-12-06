@@ -108,7 +108,7 @@ Motor control modes:
         torques are computed based on inverse kinematics + joint PD (or you can add Cartesian PD)
 """
 
-EPISODE_LENGTH = 5   # how long before we reset the environment (max episode length for RL)
+EPISODE_LENGTH = 5   # how long before we reset the environment (max episode length for RL) #10
 MAX_FWD_VELOCITY = 1  # to avoid exploiting simulator dynamics, cap max reward for body velocity 
 
 # CPG quantities
@@ -239,12 +239,30 @@ class QuadrupedGymEnv(gym.Env):
       min_joint_vel = -self._robot_config.VELOCITY_LIMITS
       max_base_ori = np.array([1.0]*4)
       min_base_ori = np.array([-1.0]*4)
-      observation_high = (np.concatenate((max_joint_angle,
+      
+      # CPG
+      max_theta = np.array([2*np.pi] * 4) #phase
+      min_theta = np.array([0.0] * 4)
+      max_dtheta = np.array([50.0] * 4) # velocity of phase
+      min_dtheta = np.array([-50.0] * 4)
+      max_r = np.array([2.0] * 4) #amplitude
+      min_r = np.array([0.0] * 4)
+      max_dr = np.array([10.0] * 4)
+      min_dr= np.array([-10.0] * 4)
+
+      """observation_high = (np.concatenate((max_joint_angle,
                                           max_joint_vel,
                                           max_base_ori)) + OBSERVATION_EPS)
       observation_low = (np.concatenate((min_joint_angle,
                                           min_joint_vel,
                                           min_base_ori)) - OBSERVATION_EPS)
+      """
+      #CPG
+      observation_high = np.concatenate((max_joint_angle,max_joint_vel,
+                                        max_base_ori,max_r,max_theta,max_dr,max_dtheta)) + OBSERVATION_EPS
+
+      observation_low = np.concatenate((min_joint_angle,min_joint_vel,
+                                    min_base_ori,min_r,min_theta,min_dr,min_dtheta)) - OBSERVATION_EPS
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -274,9 +292,17 @@ class QuadrupedGymEnv(gym.Env):
       # if using the CPG, you can include states with self._cpg.get_r(), for example
       # 50 is arbitrary
       # return foot cartesian positions and velocities (in leg frames) + base orientation
-      self._observation = np.concatenate((self.robot.GetMotorAngles(), 
+      """self._observation = np.concatenate((self.robot.GetMotorAngles(), 
                                           self.robot.GetMotorVelocities(),
                                           self.robot.GetBaseOrientation() ))
+      """
+      self._observation = np.concatenate((self.robot.GetMotorAngles(),
+                                          self.robot.GetMotorVelocities(),
+                                          self.robot.GetBaseOrientation(),
+                                          self._cpg.get_r(),
+                                          self._cpg.get_theta(),
+                                          self._cpg.get_dr(),
+                                          self._cpg.get_dtheta() ))
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -539,13 +565,17 @@ class QuadrupedGymEnv(gym.Env):
       # call inverse kinematics to get corresponding joint angles
       q_des = np.zeros(3) # [TODO]
       q_des = self.robot.ComputeInverseKinematics(i, np.array([x,y,z]))
-      
+
       # Add joint PD contribution to tau
-      #tau = np.zeros(3) # [TODO]
-      tau += kp * (q_des - q[3*i:3*i+3]) + kd * (0 - dq[3*i:3*i+3])
+      tau = np.zeros(3) # [TODO] 
+      #tau += kp * (q_des - q[3*i:3*i+3]) + kd * (0 - dq[3*i:3*i+3])
+      tau += kp[3*i:3*i+3] * (q_des - q[3*i:3*i+3]) + kd[3*i:3*i+3] * (0 - dq[3*i:3*i+3])
 
       # add Cartesian PD contribution (as you wish)
-      # tau +=
+      J, p = self.robot.ComputeJacobianAndPosition(legID=i)
+      pd = np.array([x,y,z])
+      vd = np.array([0,0,0])
+      tau += self._robot_config.kpCartesian @ (pd - p) + self._robot_config.kdCartesian @ (vd - J @ dq[3*i:3*i+3]) 
       
       action[3*i:3*i+3] = tau
 
@@ -715,7 +745,7 @@ class QuadrupedGymEnv(gym.Env):
     # change to PD control mode to set initial position, then set back..
     tmp_save_motor_control_mode_ENV = self._motor_control_mode
     tmp_save_motor_control_mode_ROB = self.robot._motor_control_mode
-    self._motor_control_mode = "PD"
+    self._motor_control_mode = "PD" 
     self.robot._motor_control_mode = "PD"
     
     try:
@@ -1080,7 +1110,7 @@ class QuadrupedGymEnv(gym.Env):
 def test_env():
   env = QuadrupedGymEnv(render=True, 
                         on_rack=True,
-                        motor_control_mode='PD',
+                        motor_control_mode='CPG', #'PD'
                         action_repeat=100,
                         )
 

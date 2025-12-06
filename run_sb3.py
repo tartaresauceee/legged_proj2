@@ -59,8 +59,8 @@ USE_GPU = False # make sure to install all necessary drivers
 # env_configs = {"motor_control_mode":"CPG",
 #                "task_env": "FWD_LOCOMOTION", #  "LR_COURSE_TASK",
 #                "observation_space_mode": "LR_COURSE_OBS"}
-env_configs = {"motor_control_mode":"CARTESIAN_PD",
-               "task_env": "LR_COURSE_TASK", #  "LR_COURSE_TASK", "FWD_LOCOMOTION"
+env_configs = {"motor_control_mode":"CPG", #"CARTESIAN_PD"
+               "task_env":"LR_COURSE_TASK", #  "LR_COURSE_TASK", "FWD_LOCOMOTION"
                "observation_space_mode": "LR_COURSE_OBS",
                "terrain": None}
 
