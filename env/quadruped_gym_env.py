@@ -211,6 +211,9 @@ class QuadrupedGymEnv(gym.Env):
     self.videoLogID = None
     self.seed()
     self.reset()
+
+    # Custom variables
+    self.previous_action = None
   
   def setupCPG(self):
     self._cpg = HopfNetwork(use_RL=True)
@@ -232,19 +235,21 @@ class QuadrupedGymEnv(gym.Env):
       # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
       # If using CPG-RL, remember to include limits on these
-      # joint_angle / joint_velocity / base_orientation 
-      max_joint_angle = self._robot_config.UPPER_ANGLE_JOINT
-      min_joint_angle = self._robot_config.LOWER_ANGLE_JOINT
-      max_joint_vel = self._robot_config.VELOCITY_LIMITS
-      min_joint_vel = -self._robot_config.VELOCITY_LIMITS
+      # foot_pos / foot_vel / base_orientation 
+      leg_length = self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH
+      max_foot_pos = np.array([leg_length] *3 *4)
+      max_foot_vel = np.array([5, 5, 5] * 4)
       max_base_ori = np.array([1.0]*4)
       min_base_ori = np.array([-1.0]*4)
-      observation_high = (np.concatenate((max_joint_angle,
-                                          max_joint_vel,
-                                          max_base_ori)) + OBSERVATION_EPS)
-      observation_low = (np.concatenate((min_joint_angle,
-                                          min_joint_vel,
-                                          min_base_ori)) - OBSERVATION_EPS)
+      max_base_vel = np.array([MAX_FWD_VELOCITY]*3)
+      observation_high = (np.concatenate((max_foot_pos,
+                                          max_foot_vel,
+                                          max_base_ori,
+                                          max_base_vel)) + OBSERVATION_EPS)
+      observation_low = (np.concatenate((-max_foot_pos,
+                                          -max_foot_vel,
+                                          min_base_ori,
+                                          -max_base_vel)) - OBSERVATION_EPS)
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -274,9 +279,20 @@ class QuadrupedGymEnv(gym.Env):
       # if using the CPG, you can include states with self._cpg.get_r(), for example
       # 50 is arbitrary
       # return foot cartesian positions and velocities (in leg frames) + base orientation
-      self._observation = np.concatenate((self.robot.GetMotorAngles(), 
-                                          self.robot.GetMotorVelocities(),
-                                          self.robot.GetBaseOrientation() ))
+      
+      # Foot position and velocity
+      foot_pos = np.zeros((4*3))
+      foot_vel = np.zeros((4*3))
+      dq = self.robot.GetMotorVelocities()
+      
+      for i in range(4):
+        J, foot_pos[3*i:3*i+3] = self.robot.ComputeJacobianAndPosition(legID=i)
+        foot_vel[3*i:3*i+3] = J @ dq[3*i:3*i+3]
+
+      self._observation = np.concatenate((foot_pos,
+                                          foot_vel,
+                                          self.robot.GetBaseOrientation(),
+                                          self.robot.GetBaseLinearVelocity() ))
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -395,13 +411,39 @@ class QuadrupedGymEnv(gym.Env):
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
     des_vel_x = 0.5
-    vel_tracking_reward = 0.5 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
-    
+    vel_tracking_reward = 3 * np.exp( -1/ 0.1 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 ) # Gaussian
+
+    # Orienations
+    roll, pitch, yaw = self.robot.GetBaseOrientationRollPitchYaw()
+
     # minimize yaw (go straight)
-    yaw_reward = -0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2]) 
+    yaw_reward = -0.1 * np.abs(yaw)
+
+    # Stay horizontal
+    ori_reward = 3.0 * np.exp(-1/2 * (roll**2 + pitch**2)) 
     
     # don't drift laterally 
-    drift_reward = -0.1 * abs(self.robot.GetBasePosition()[1]) 
+    drift_reward = -0.2 * abs(self.robot.GetBasePosition()[1]) 
+
+    # # keep legs near default position
+    # des_foot_pos = robot_config.NOMINAL_FOOT_POS_LEG_FRAME
+    # # Foot position and velocity
+    # foot_pos = np.zeros((4*3))
+    # foot_vel = np.zeros((4*3))
+    # # Joint velocitiees
+    # motor_vel = self.robot.GetMotorVelocities()
+    # for i in range(4):
+    #   J, foot_pos[3*i:3*i+3] = self.robot.ComputeJacobianAndPosition(legID=i)
+    #   foot_vel[3*i:3*i+3] = J @ motor_vel[3*i:3*i+3]
+    # foot_pos_dist = np.linalg.norm(des_foot_pos.reshape(4,3) - foot_pos.reshape(4,3), axis=1)
+    # foot_pos_reward = np.sum(2 * np.exp(-1 / 0.5 * foot_pos_dist**2)) # Gaussian
+
+    # Action smoothness
+    if self.previous_action is None:
+        r_smooth = 0
+    else:
+        r_smooth = -0.01 * np.linalg.norm(self._last_action - self.previous_action)**2
+    self.previous_action = self._last_action.copy()
     
     # minimize energy 
     energy_reward = 0 
@@ -409,13 +451,32 @@ class QuadrupedGymEnv(gym.Env):
     for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
       energy_reward += np.abs(np.dot(tau,vel)) * self._time_step
 
+    # # Minimize foot accelerations accelerations
+    # if self.previous_vel is None:
+    #   accel_reward = 0
+    # else:
+    #   foot_accel = (foot_vel - self.previous_vel) / self._time_step
+    #   foot_accel = foot_accel.reshape(4, 3)
+
+    #   # Compute norm for each foot
+    #   foot_accel_norms = np.linalg.norm(foot_accel, axis=1)  # shape: (4,)
+
+    #   accel_reward = np.sum(foot_accel_norms)
+    # self.previous_vel = foot_vel
+
+    # Penalty for not max ep len
+    if self._termination():
+      return - 20
+
     reward = vel_tracking_reward \
             + yaw_reward \
             + drift_reward \
-            - 0.05 * energy_reward \
-            - 0.2 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
+            + r_smooth \
+            - 0.01 * energy_reward \
+            + ori_reward \
 
-    return max(reward,0) # keep rewards positive
+    # print("reward: ", reward)
+    return reward # keep rewards positive
   
   def _reward(self):
     """ Get reward depending on task"""

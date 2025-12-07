@@ -75,6 +75,16 @@ if LOAD_NN:
     stats_path = os.path.join(log_dir, "vec_normalize.pkl")
     model_name = get_latest_model(log_dir)
 
+def linear_schedule(initial_lr):
+    """
+    Linear learning rate schedule.
+    initial_lr: learning rate at the beginning of training
+    final_lr: learning rate at the end of training (default = 0)
+    """
+    def func(progress_remaining):
+        return progress_remaining * initial_lr
+    return func
+
 # directory to save policies and normalization parameters
 SAVE_PATH = './logs/intermediate_models/'+ datetime.now().strftime("%m%d%y%H%M%S") + '/'
 os.makedirs(SAVE_PATH, exist_ok=True)
@@ -121,7 +131,7 @@ policy_kwargs = dict(net_arch=[256,256]) # act_fun=tf.nn.tanh
 
 # What are these hyperparameters? Check here: https://stable-baselines3.readthedocs.io/en/master/modules/ppo.html
 n_steps = 4096 
-learning_rate = lambda f: 1e-4
+learning_rate = linear_schedule(5e-4)
 ppo_config = {  "gamma":0.99, 
                 "n_steps": int(n_steps/NUM_ENVS), 
                 "ent_coef":0.0, 
@@ -170,7 +180,7 @@ if LOAD_NN:
     print("\nLoaded model", model_name, "\n")
 
 # Learn and save (may need to train for longer)
-model.learn(total_timesteps=1e6, log_interval=1,callback=[checkpoint_callback, TensorboardCallback()])
+model.learn(total_timesteps=2e6, log_interval=1,callback=[checkpoint_callback, TensorboardCallback()])
 
 # Don't forget to save the VecNormalize statistics when saving the agent
 model.save( os.path.join(SAVE_PATH, "rl_model" ) ) 
