@@ -233,12 +233,11 @@ class QuadrupedGymEnv(gym.Env):
       # Note 50 is arbitrary below, you may have more or less
       # If using CPG-RL, remember to include limits on these
       # joint_angle / joint_velocity / base_orientation 
-      max_joint_angle = self._robot_config.UPPER_ANGLE_JOINT
-      min_joint_angle = self._robot_config.LOWER_ANGLE_JOINT
-      max_joint_vel = self._robot_config.VELOCITY_LIMITS
-      min_joint_vel = -self._robot_config.VELOCITY_LIMITS
+      
+      # Base
       max_base_ori = np.array([1.0]*4)
       min_base_ori = np.array([-1.0]*4)
+      max_base_vel = np.array([MAX_FWD_VELOCITY]*3)
       
       # CPG
       max_theta = np.array([2*np.pi] * 4) #phase
@@ -250,19 +249,20 @@ class QuadrupedGymEnv(gym.Env):
       max_dr = np.array([10.0] * 4)
       min_dr= np.array([-10.0] * 4)
 
-      """observation_high = (np.concatenate((max_joint_angle,
-                                          max_joint_vel,
-                                          max_base_ori)) + OBSERVATION_EPS)
-      observation_low = (np.concatenate((min_joint_angle,
-                                          min_joint_vel,
-                                          min_base_ori)) - OBSERVATION_EPS)
-      """
-      #CPG
-      observation_high = np.concatenate((max_joint_angle,max_joint_vel,
-                                        max_base_ori,max_r,max_theta,max_dr,max_dtheta)) + OBSERVATION_EPS
+      # Ori - Vel - theta - dtheta - r - dr
+      observation_high = (np.concatenate((max_base_ori,
+                                          max_base_vel,
+                                          max_theta,
+                                          max_dtheta,
+                                          max_r,
+                                          max_dr)) + OBSERVATION_EPS)
+      observation_low = (np.concatenate((min_base_ori,
+                                          -max_base_vel,
+                                          min_theta,
+                                          min_dtheta,
+                                          min_r,
+                                          min_dr)) - OBSERVATION_EPS)
 
-      observation_low = np.concatenate((min_joint_angle,min_joint_vel,
-                                    min_base_ori,min_r,min_theta,min_dr,min_dtheta)) - OBSERVATION_EPS
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -292,17 +292,15 @@ class QuadrupedGymEnv(gym.Env):
       # if using the CPG, you can include states with self._cpg.get_r(), for example
       # 50 is arbitrary
       # return foot cartesian positions and velocities (in leg frames) + base orientation
-      """self._observation = np.concatenate((self.robot.GetMotorAngles(), 
-                                          self.robot.GetMotorVelocities(),
-                                          self.robot.GetBaseOrientation() ))
-      """
-      self._observation = np.concatenate((self.robot.GetMotorAngles(),
-                                          self.robot.GetMotorVelocities(),
-                                          self.robot.GetBaseOrientation(),
-                                          self._cpg.get_r(),
+
+
+      # Ori - Vel - theta - dtheta - r - dr
+      self._observation = np.concatenate((self.robot.GetBaseOrientation(),
+                                          self.robot.GetBaseLinearVelocity(),
                                           self._cpg.get_theta(),
-                                          self._cpg.get_dr(),
-                                          self._cpg.get_dtheta() ))
+                                          self._cpg.get_dtheta(),
+                                          self._cpg.get_r(),
+                                          self._cpg.get_dr()))
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -563,19 +561,17 @@ class QuadrupedGymEnv(gym.Env):
       z = zs[i]
 
       # call inverse kinematics to get corresponding joint angles
-      q_des = np.zeros(3) # [TODO]
-      q_des = self.robot.ComputeInverseKinematics(i, np.array([x,y,z]))
+      q_des = self.robot.ComputeInverseKinematics(i, np.array([x,y,z])) # [TODO]
 
       # Add joint PD contribution to tau
       tau = np.zeros(3) # [TODO] 
-      #tau += kp * (q_des - q[3*i:3*i+3]) + kd * (0 - dq[3*i:3*i+3])
       tau += kp[3*i:3*i+3] * (q_des - q[3*i:3*i+3]) + kd[3*i:3*i+3] * (0 - dq[3*i:3*i+3])
 
       # add Cartesian PD contribution (as you wish)
-      J, p = self.robot.ComputeJacobianAndPosition(legID=i)
-      pd = np.array([x,y,z])
-      vd = np.array([0,0,0])
-      tau += self._robot_config.kpCartesian @ (pd - p) + self._robot_config.kdCartesian @ (vd - J @ dq[3*i:3*i+3]) 
+      # J, p = self.robot.ComputeJacobianAndPosition(legID=i)
+      # pd = np.array([x,y,z])
+      # vd = np.array([0,0,0])
+      # tau += self._robot_config.kpCartesian @ (pd - p) + self._robot_config.kdCartesian @ (vd - J @ dq[3*i:3*i+3]) 
       
       action[3*i:3*i+3] = tau
 
