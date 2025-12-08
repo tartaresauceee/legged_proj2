@@ -419,13 +419,16 @@ class QuadrupedGymEnv(gym.Env):
     """ Implement your reward function here. How will you improve upon the above? """
     # [TODO] add your reward function. 
     des_vel_x = 0.5
-    vel_tracking_reward = 0.5 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
-    
+    vel_tracking_reward = 1 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
+        
+    # Orienations
+    roll, pitch, yaw = self.robot.GetBaseOrientationRollPitchYaw()
+
     # minimize yaw (go straight)
-    yaw_reward = -0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2]) 
-    
-    # don't drift laterally 
-    drift_reward = -0.1 * abs(self.robot.GetBasePosition()[1]) 
+    yaw_reward = -0.5 * np.abs(yaw)
+
+    # Stay horizontal
+    ori_reward = - 0.3 * np.exp(-1/2 * (roll**2 + pitch**2)) 
     
     # minimize energy 
     energy_reward = 0 
@@ -435,11 +438,11 @@ class QuadrupedGymEnv(gym.Env):
 
     reward = vel_tracking_reward \
             + yaw_reward \
-            + drift_reward \
+            + yaw_reward \
             - 0.05 * energy_reward \
-            - 0.2 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
+            + ori_reward
 
-    return max(reward,0) # keep rewards positive
+    return reward # keep rewards positive
   
   def _reward(self):
     """ Get reward depending on task"""
