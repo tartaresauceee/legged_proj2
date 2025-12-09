@@ -108,7 +108,7 @@ Motor control modes:
         torques are computed based on inverse kinematics + joint PD (or you can add Cartesian PD)
 """
 
-EPISODE_LENGTH = 5   # how long before we reset the environment (max episode length for RL) #10
+EPISODE_LENGTH = 20   # how long before we reset the environment (max episode length for RL) #10
 MAX_FWD_VELOCITY = 1  # to avoid exploiting simulator dynamics, cap max reward for body velocity 
 
 # CPG quantities
@@ -249,19 +249,34 @@ class QuadrupedGymEnv(gym.Env):
       max_dr = np.array([10.0] * 4)
       min_dr= np.array([-10.0] * 4)
 
+      # GAPS
+      # min_base_pos = np.array([-50]*3)
+      # max_base_pos = np.array([50]*3)
+      # leg_length = self._robot_config.THIGH_LINK_LENGTH + self._robot_config.CALF_LINK_LENGTH
+      # max_foot_pos = np.array([leg_length] *3 *4)
+      # max_foot_vel = np.array([5, 5, 5] * 4)
+      min_gap_dist = np.array([0.0])
+      max_gap_dist = np.array([20.0])
+      max_contact_forces = np.array([100.0]*4)
+      min_contact_forces = np.array([0.0]*4)
+
       # Ori - Vel - theta - dtheta - r - dr
       observation_high = (np.concatenate((max_base_ori,
                                           max_base_vel,
                                           max_theta,
                                           max_dtheta,
                                           max_r,
-                                          max_dr)) + OBSERVATION_EPS)
+                                          max_dr,
+                                          max_gap_dist,
+                                          max_contact_forces)) + OBSERVATION_EPS)
       observation_low = (np.concatenate((min_base_ori,
                                           -max_base_vel,
                                           min_theta,
                                           min_dtheta,
                                           min_r,
-                                          min_dr)) - OBSERVATION_EPS)
+                                          min_dr,
+                                          min_gap_dist,
+                                          min_contact_forces)) - OBSERVATION_EPS)
 
 
     else:
@@ -293,6 +308,23 @@ class QuadrupedGymEnv(gym.Env):
       # 50 is arbitrary
       # return foot cartesian positions and velocities (in leg frames) + base orientation
 
+    # Foot position and velocity
+      foot_pos = np.zeros((4*3))
+      foot_vel = np.zeros((4*3))
+      dq = self.robot.GetMotorVelocities()
+      
+      for i in range(4):
+        J, foot_pos[3*i:3*i+3] = self.robot.ComputeJacobianAndPosition(legID=i)
+        foot_vel[3*i:3*i+3] = J @ dq[3*i:3*i+3]
+
+      gap_centers = self._gap_centers
+      base_pos_x = self.robot.GetBasePosition()[0]
+      dist = gap_centers - base_pos_x
+      positive_dist = dist[dist > 0]
+      if positive_dist.size:
+        smallest_pos = positive_dist.min()
+      else:
+        smallest_pos = 0 # End of the obstacles
 
       # Ori - Vel - theta - dtheta - r - dr
       self._observation = np.concatenate((self.robot.GetBaseOrientation(),
@@ -300,7 +332,9 @@ class QuadrupedGymEnv(gym.Env):
                                           self._cpg.get_theta(),
                                           self._cpg.get_dtheta(),
                                           self._cpg.get_r(),
-                                          self._cpg.get_dr()))
+                                          self._cpg.get_dr(),
+                                          np.array([smallest_pos]),
+                                          self.robot.GetContactInfo()[2] ))
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -420,12 +454,33 @@ class QuadrupedGymEnv(gym.Env):
     # [TODO] add your reward function. 
     des_vel_x = 0.5
     vel_tracking_reward = 0.5 * np.exp( -1/ 0.25 *  (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2 )
+
+    gap_centers = self._gap_centers
+    base_pos = self.robot.GetBasePosition()
+    dist = gap_centers - base_pos[0]
+    positive_dist = dist[dist > 0]
+    if positive_dist.size:
+        idx = np.argmin(positive_dist)
+    else:
+        idx = len(gap_centers) - 1  # End of the obstacles
+
+    # Sparse bonus for successfully crossing a gap (only once per gap per episode)
+    gap_crossing_bonus = 0
+    gap_width = 0.1  # from add_gaps parameters
+    for gap_idx in range(len(gap_centers)):
+      gap_end = gap_centers[gap_idx] + gap_width / 2
+      # Check if robot has passed this gap and hasn't been rewarded for it yet
+      if base_pos[0] > gap_end and gap_idx not in self._gaps_crossed:
+        # Successfully crossed the gap!
+        self._gaps_crossed.add(gap_idx)
+        gap_crossing_bonus = 10.0  # Large sparse reward
+        break  # Only reward one gap per step
     
     # minimize yaw (go straight)
-    yaw_reward = -0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2]) 
+    yaw_reward = -0.5 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2]) 
     
     # don't drift laterally 
-    drift_reward = -0.1 * abs(self.robot.GetBasePosition()[1]) 
+    drift_reward = -0.5 * abs(self.robot.GetBasePosition()[1]) 
     
     # minimize energy 
     energy_reward = 0 
@@ -436,6 +491,7 @@ class QuadrupedGymEnv(gym.Env):
     reward = vel_tracking_reward \
             + yaw_reward \
             + drift_reward \
+            + gap_crossing_bonus \
             - 0.05 * energy_reward \
             - 0.2 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
 
@@ -692,6 +748,10 @@ class QuadrupedGymEnv(gym.Env):
     self._sim_step_counter = 0
     self._last_base_position = [0, 0, 0]
 
+    # Initialize gap tracking for sparse rewards
+    if self._terrain == "GAPS":
+      self._gaps_crossed = set()  # Track which gap indices have been crossed
+      
     # Enable rendering again
     if self._is_render:
       self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw,
