@@ -249,19 +249,25 @@ class QuadrupedGymEnv(gym.Env):
       max_dr = np.array([10.0] * 4)
       min_dr= np.array([-10.0] * 4)
 
-      # Ori - Vel - theta - dtheta - r - dr
+      # Contact Forces
+      max_contact_forces = np.array([100.0]*4)
+      min_contact_forces = np.array([0.0]*4)
+
+      # Ori - Vel - theta - dtheta - r - dr - ContactForce
       observation_high = (np.concatenate((max_base_ori,
                                           max_base_vel,
                                           max_theta,
                                           max_dtheta,
                                           max_r,
-                                          max_dr)) + OBSERVATION_EPS)
+                                          max_dr,
+                                          max_contact_forces)) + OBSERVATION_EPS)
       observation_low = (np.concatenate((min_base_ori,
                                           -max_base_vel,
                                           min_theta,
                                           min_dtheta,
                                           min_r,
-                                          min_dr)) - OBSERVATION_EPS)
+                                          min_dr,
+                                          min_contact_forces)) - OBSERVATION_EPS)
 
 
     else:
@@ -294,13 +300,14 @@ class QuadrupedGymEnv(gym.Env):
       # return foot cartesian positions and velocities (in leg frames) + base orientation
 
 
-      # Ori - Vel - theta - dtheta - r - dr
+      # Ori - Vel - theta - dtheta - r - dr - ContactForce
       self._observation = np.concatenate((self.robot.GetBaseOrientation(),
                                           self.robot.GetBaseLinearVelocity(),
                                           self._cpg.get_theta(),
                                           self._cpg.get_dtheta(),
                                           self._cpg.get_r(),
-                                          self._cpg.get_dr()))
+                                          self._cpg.get_dr(),
+                                          self.robot.GetContactInfo()[2]))
     else:
       raise ValueError("observation space not defined or not intended")
 
