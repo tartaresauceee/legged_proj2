@@ -5,3 +5,6 @@ logs/
 .vscode
 *.pyc
 tb_logs
+trainings.md
+*.png
+*.mp4
