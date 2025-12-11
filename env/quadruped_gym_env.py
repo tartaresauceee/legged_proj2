@@ -259,6 +259,8 @@ class QuadrupedGymEnv(gym.Env):
       max_gap_dist = np.array([20.0])
       max_contact_forces = np.array([100.0]*4)
       min_contact_forces = np.array([0.0]*4)
+      foot_z_min = np.array([0.0]*4)
+      foot_z_max = np.array([4.0]*4)
 
       # Ori - Vel - theta - dtheta - r - dr
       observation_high = (np.concatenate((max_base_ori,
@@ -268,7 +270,8 @@ class QuadrupedGymEnv(gym.Env):
                                           max_r,
                                           max_dr,
                                           max_gap_dist,
-                                          max_contact_forces)) + OBSERVATION_EPS)
+                                          max_contact_forces,
+                                          foot_z_max)) + OBSERVATION_EPS)
       observation_low = (np.concatenate((min_base_ori,
                                           -max_base_vel,
                                           min_theta,
@@ -276,7 +279,8 @@ class QuadrupedGymEnv(gym.Env):
                                           min_r,
                                           min_dr,
                                           min_gap_dist,
-                                          min_contact_forces)) - OBSERVATION_EPS)
+                                          min_contact_forces,
+                                          foot_z_min)) - OBSERVATION_EPS)
 
 
     else:
@@ -326,6 +330,17 @@ class QuadrupedGymEnv(gym.Env):
       else:
         smallest_pos = 0 # End of the obstacles
 
+      # Obtain global foot z position
+      foot_z_positions = []
+      for foot_link_id in self.robot._foot_link_ids:
+        link_state = self._pybullet_client.getLinkState(
+            self.robot.quadruped, 
+            foot_link_id, 
+            computeForwardKinematics=True
+        )
+        foot_z = link_state[0][2]  # Z-coordinate in world frame
+        foot_z_positions.append(foot_z)
+
       # Ori - Vel - theta - dtheta - r - dr
       self._observation = np.concatenate((self.robot.GetBaseOrientation(),
                                           self.robot.GetBaseLinearVelocity(),
@@ -334,7 +349,8 @@ class QuadrupedGymEnv(gym.Env):
                                           self._cpg.get_r(),
                                           self._cpg.get_dr(),
                                           np.array([smallest_pos]),
-                                          self.robot.GetContactInfo()[2] ))
+                                          self.robot.GetContactInfo()[2],
+                                          foot_z_positions))
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -470,12 +486,30 @@ class QuadrupedGymEnv(gym.Env):
     for gap_idx in range(len(gap_centers)):
       gap_end = gap_centers[gap_idx] + gap_width / 2
       # Check if robot has passed this gap and hasn't been rewarded for it yet
-      if base_pos[0] > gap_end and gap_idx not in self._gaps_crossed:
+      # -1 for a clearance of 1m in the x direction
+      if base_pos[0]-1 > gap_end and gap_idx not in self._gaps_crossed:
         # Successfully crossed the gap!
         self._gaps_crossed.add(gap_idx)
-        gap_crossing_bonus = 10.0  # Large sparse reward
+        gap_crossing_bonus = 50.0  # Large sparse reward
         break  # Only reward one gap per step
-    
+
+    # Get each foot position in WORLD frame and penalize based on depth below platform
+    foot_penalty = 0
+    platform_height = 1.0  # Height of platforms in GAPS terrain
+
+    for foot_link_id in self.robot._foot_link_ids:
+        link_state = self._pybullet_client.getLinkState(
+            self.robot.quadruped, 
+            foot_link_id, 
+            computeForwardKinematics=True
+        )
+        foot_z = link_state[0][2]  # Z-coordinate in world frame
+        
+        # Only penalize if foot is below platform
+        if foot_z < platform_height:
+            depth_below = platform_height - foot_z  # How far below (0 to ~1.0m)
+            foot_penalty -= 0.5 * depth_below  # Proportional to depth
+
     # minimize yaw (go straight)
     yaw_reward = -0.5 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2]) 
     
@@ -492,10 +526,11 @@ class QuadrupedGymEnv(gym.Env):
             + yaw_reward \
             + drift_reward \
             + gap_crossing_bonus \
+            + foot_penalty \
             - 0.05 * energy_reward \
             - 0.2 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
 
-    return max(reward,0) # keep rewards positive
+    return reward
   
   def _reward(self):
     """ Get reward depending on task"""
