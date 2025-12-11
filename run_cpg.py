@@ -50,7 +50,7 @@ TIME_STEP = 0.001
 foot_y = 0.0838 # this is the hip length 
 sideSign = np.array([-1, 1, -1, 1]) # get correct hip sign (body right is negative)
 
-env = QuadrupedGymEnv(render=True,              # visualize
+env = QuadrupedGymEnv(render=False,              # visualize
                     on_rack=False,              # useful for debugging! 
                     isRLGymInterface=False,     # not using RL
                     time_step=TIME_STEP,
@@ -67,7 +67,11 @@ TEST_STEPS = int(10 / (TIME_STEP))
 t = np.arange(TEST_STEPS)*TIME_STEP
 
 # [TODO] initialize data structures to save CPG and robot states
-leg_pos = np.zeros((TEST_STEPS, 4, 3))
+cpg_states = np.zeros((TEST_STEPS, 4, 4)) # Time x leg x state
+foot_pos = np.zeros((TEST_STEPS, 3)) # Time x position (one leg)
+des_foot_pos = np.zeros((TEST_STEPS, 3))
+joint_angle = np.zeros((TEST_STEPS, 3))
+des_joint_angle = np.zeros((TEST_STEPS, 3))
 
 ############## Sample Gains
 # joint PD gains
@@ -130,22 +134,99 @@ for j in range(TEST_STEPS):
   env.step(action)
 
   # [TODO] save any CPG or robot states
-  for i in range(4):
-    _, pos = env.robot.ComputeJacobianAndPosition(i, q[3*i:3*i+3])
-    leg_pos[j, i, :] = pos
+
+  # CPG States
+  r = cpg.get_r().copy()
+  theta = cpg.get_theta().copy()
+  dr = cpg.get_dr().copy()
+  dtheta = cpg.get_dtheta().copy()
+  cpg_states[j] = np.stack([r, theta, dr, np.round(dtheta, decimals=5)], axis=1)
+
+  # Foot position
+  leg_plot=1
+  _, foot_pos[j] = env.robot.ComputeJacobianAndPosition(leg_plot)
+  des_foot_pos[j] = np.array([xs[leg_plot], sideSign[leg_plot] * foot_y, zs[leg_plot]])
+
+  # Joint angle
+  joint_angle[j] = env.robot.GetMotorAngles()[3*leg_plot:3*leg_plot+3]
+  des_joint_angle[j] = env.robot.ComputeInverseKinematics(leg_plot, des_foot_pos[j])
+
+  
 
 ##################################################### 
 # PLOTS
 #####################################################
 # [TODO] Create your plots
 
-plt.figure()
-plt.plot(leg_pos[:, 0, 0], leg_pos[:, 0, 1])
-plt.plot(leg_pos[0, 0, 0], leg_pos[0, 0, 1], color='red', linewidth=5, marker=".")
-plt.show()
+# 1. CPG States
 
-# example
-# fig = plt.figure()
-# plt.plot(t,joint_pos[1,:], label='FR thigh')
-# plt.legend()
-# plt.show()
+leg_names = ['Front Right', 'Front Left', 'Rear Right', 'Rear Left']
+state_names = ['r', 'theta', 'dr', 'dtheta']
+
+t_start = 0
+t_end = 750
+
+fig, axs = plt.subplots(2, 2, figsize=(10, 8)) # 1 subplot per leg
+axs = axs.flatten()  # Flatten to 1D array for easy iteration
+
+for state_idx in range(4):
+    ax = axs[state_idx]
+    
+    # Plot each state for this leg
+    for leg_idx in range(4):
+        # Data shape: [Time, Leg, State]
+        ax.plot(t[t_start:t_end], cpg_states[t_start:t_end, leg_idx, state_idx], label=leg_names[leg_idx])
+    
+    ax.set_title(f'State: {state_names[state_idx]}')
+    ax.set_xlabel('Time [s]')
+    ax.legend()
+    ax.grid()
+
+plt.tight_layout()
+
+# 2.Foot Position vs Desired Foot Position (for one leg)
+t_start = 1000
+t_end = 1500
+fig = plt.figure(figsize=(10, 8))
+ax = fig.add_subplot(111, projection='3d')
+
+# Plot 3D trajectories
+ax.plot(des_foot_pos[t_start:t_end, 0], des_foot_pos[t_start:t_end, 1], des_foot_pos[t_start:t_end, 2], 
+        'k--', label='Desired', linewidth=2)
+ax.plot(foot_pos[t_start:t_end, 0], foot_pos[t_start:t_end, 1], foot_pos[t_start:t_end, 2], 
+        'r-', label='Actual', alpha=0.8)
+
+ax.set_title('Foot Trajectory Tracking (3D)')
+ax.legend()
+
+# Plot Axes
+fig, axs = plt.subplots(3, 1, figsize=(10, 10), sharex=True)
+coords = ['X', 'Y', 'Z']
+
+for i in range(3):
+    axs[i].plot(t[t_start:t_end], des_foot_pos[t_start:t_end, i], 'k--', label='Desired')
+    axs[i].plot(t[t_start:t_end], foot_pos[t_start:t_end, i], 'r-', label='Actual')
+    axs[i].set_ylabel(f'{coords[i]} Position [m]')
+    axs[i].grid(True)
+    axs[i].legend()
+
+axs[2].set_xlabel('Time [s]')
+axs[0].set_title('Foot Position Tracking per Coordinate')
+
+plt.tight_layout()
+
+# 3. Joint Angle
+fig, axs = plt.subplots(3, 1, figsize=(10, 10), sharex=True)
+coords = ['Hip', 'Thigh', 'Calf']
+
+for i in range(3):
+    axs[i].plot(t[t_start:t_end], des_joint_angle[t_start:t_end, i], 'k--', label='Desired')
+    axs[i].plot(t[t_start:t_end], joint_angle[t_start:t_end, i], 'r-', label='Actual')
+    axs[i].set_ylabel(f'{coords[i]} Angle [rad]')
+    axs[i].grid(True)
+    axs[i].legend()
+
+axs[2].set_xlabel('Time [s]')
+axs[0].set_title('Joint Angle Tracking')
+
+plt.show()

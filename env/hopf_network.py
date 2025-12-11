@@ -58,7 +58,7 @@ class HopfNetwork():
                 # omega_stance=8*2*np.pi,  # frequency in stance phase (PACE)
                 omega_swing=4*2*np.pi,   # frequency in swing phase (BOUND)
                 omega_stance=4*2*np.pi,  # frequency in stance phase (BOUND)
-                gait="BOUND",             # Gait, can be TROT, WALK, PACE, BOUND, etc.
+                gait="TROT",             # Gait, can be TROT, WALK, PACE, BOUND, etc.
                 alpha=10,                # amplitude convergence factor
                 coupling_strength=1,     # coefficient to multiply coupling matrix
                 couple=True,             # whether oscillators should be coupled
