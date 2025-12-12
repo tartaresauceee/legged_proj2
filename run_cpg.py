@@ -72,6 +72,9 @@ foot_pos = np.zeros((TEST_STEPS, 3)) # Time x position (one leg)
 des_foot_pos = np.zeros((TEST_STEPS, 3))
 joint_angle = np.zeros((TEST_STEPS, 3))
 des_joint_angle = np.zeros((TEST_STEPS, 3))
+base_vel = np.zeros((TEST_STEPS, 3))
+energy = 0
+pos_x = np.zeros((TEST_STEPS))
 
 ############## Sample Gains
 # joint PD gains
@@ -151,6 +154,13 @@ for j in range(TEST_STEPS):
   joint_angle[j] = env.robot.GetMotorAngles()[3*leg_plot:3*leg_plot+3]
   des_joint_angle[j] = env.robot.ComputeInverseKinematics(leg_plot, des_foot_pos[j])
 
+  # Base velocity
+  base_vel[j] = env.robot.GetBaseLinearVelocity()
+
+  # Energy
+  for tau,vel in zip(action,dq):
+      energy += np.abs(np.dot(tau,vel)) * TIME_STEP
+  pos_x[j] = env.robot.GetBasePosition()[0]
   
 
 ##################################################### 
@@ -230,3 +240,12 @@ axs[2].set_xlabel('Time [s]')
 axs[0].set_title('Joint Angle Tracking')
 
 plt.show()
+
+# Base Velocity
+print(f"Velocity [x]: \n\tmin: {np.min(base_vel[:,0])}\n\tmax: {np.max(base_vel[:,0])}\n\tmean: {np.mean(base_vel[:,0])}")
+print(f"Velocity [y]: \n\tmin: {np.min(base_vel[:,1])}\n\tmax: {np.max(base_vel[:,1])}\n\tmean: {np.mean(base_vel[:,1])}")
+print(f"Velocity [z]: \n\tmin: {np.min(base_vel[:,2])}\n\tmax: {np.max(base_vel[:,2])}\n\tmean: {np.mean(base_vel[:,2])}")
+
+# CoT
+mass = np.sum(env.robot.GetTotalMassFromURDF())
+print("CoT: ", energy/mass/9.81/np.mean(pos_x))
