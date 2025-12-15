@@ -108,7 +108,7 @@ Motor control modes:
         torques are computed based on inverse kinematics + joint PD (or you can add Cartesian PD)
 """
 
-EPISODE_LENGTH = 5   # how long before we reset the environment (max episode length for RL) #10
+EPISODE_LENGTH = 20   # how long before we reset the environment (max episode length for RL) #10
 MAX_FWD_VELOCITY = 1  # to avoid exploiting simulator dynamics, cap max reward for body velocity 
 
 # CPG quantities
@@ -249,19 +249,25 @@ class QuadrupedGymEnv(gym.Env):
       max_dr = np.array([10.0] * 4)
       min_dr= np.array([-10.0] * 4)
 
+      # Contact Forces
+      max_contact_forces = np.array([100.0]*4)
+      min_contact_forces = np.array([0.0]*4)
+
       # Ori - Vel - theta - dtheta - r - dr
       observation_high = (np.concatenate((max_base_ori,
                                           max_base_vel,
                                           max_theta,
                                           max_dtheta,
                                           max_r,
-                                          max_dr)) + OBSERVATION_EPS)
+                                          max_dr,
+                                          max_contact_forces)) + OBSERVATION_EPS)
       observation_low = (np.concatenate((min_base_ori,
                                           -max_base_vel,
                                           min_theta,
                                           min_dtheta,
                                           min_r,
-                                          min_dr)) - OBSERVATION_EPS)
+                                          min_dr,
+                                          min_contact_forces)) - OBSERVATION_EPS)
 
 
     else:
@@ -294,13 +300,15 @@ class QuadrupedGymEnv(gym.Env):
       # return foot cartesian positions and velocities (in leg frames) + base orientation
 
 
+
       # Ori - Vel - theta - dtheta - r - dr
       self._observation = np.concatenate((self.robot.GetBaseOrientation(),
                                           self.robot.GetBaseLinearVelocity(),
                                           self._cpg.get_theta(),
                                           self._cpg.get_dtheta(),
                                           self._cpg.get_r(),
-                                          self._cpg.get_dr()))
+                                          self._cpg.get_dr(),
+                                          self.robot.GetContactInfo()[2]))
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -427,6 +435,12 @@ class QuadrupedGymEnv(gym.Env):
     # don't drift laterally 
     drift_reward = -0.1 * abs(self.robot.GetBasePosition()[1]) 
     
+    # Penalize if robot exceed -45 and 45 degrees in pitch
+    # pitch_penalty = 0
+    # pitch = self.robot.GetBaseOrientationRollPitchYaw()[1]
+    # if pitch < -np.pi/4 or pitch > np.pi/4:
+    #   pitch_penalty = -0.5 * pitch
+
     # minimize energy 
     energy_reward = 0 
 
@@ -666,7 +680,7 @@ class QuadrupedGymEnv(gym.Env):
 
       if self._terrain is not None:
         if self._terrain == "SLOPES":
-          self.add_slopes(pitch=0.2)
+          self.add_slopes(pitch=0.2) # Trained on 0.2
         elif self._terrain == "STAIRS":
           self.add_stairs(num_stairs=12, stair_height=0.05, stair_width=0.25)
         elif self._terrain == "GAPS":

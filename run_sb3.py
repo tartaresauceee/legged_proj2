@@ -62,7 +62,7 @@ USE_GPU = False # make sure to install all necessary drivers
 env_configs = {"motor_control_mode":"CPG", #"CARTESIAN_PD"
                "task_env":"LR_COURSE_TASK", #  "LR_COURSE_TASK", "FWD_LOCOMOTION"
                "observation_space_mode": "LR_COURSE_OBS",
-               "terrain": None}
+               "terrain": "SLOPES"}
 
 if USE_GPU and LEARNING_ALG=="SAC":
     gpu_arg = "auto" 
@@ -170,7 +170,7 @@ if LOAD_NN:
     print("\nLoaded model", model_name, "\n")
 
 # Learn and save (may need to train for longer)
-model.learn(total_timesteps=1e6, log_interval=1,callback=[checkpoint_callback, TensorboardCallback()])
+model.learn(total_timesteps=4e6, log_interval=1,callback=[checkpoint_callback, TensorboardCallback()])
 
 # Don't forget to save the VecNormalize statistics when saving the agent
 model.save( os.path.join(SAVE_PATH, "rl_model" ) ) 

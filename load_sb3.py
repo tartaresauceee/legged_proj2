@@ -57,15 +57,15 @@ from utils.file_utils import get_latest_model, load_all_results
 LEARNING_ALG = "PPO" #"SAC"
 interm_dir = "./logs/intermediate_models/"
 # path to saved models, i.e. interm_dir + '102824115106'
-log_dir = interm_dir + '120325180443'
+log_dir = interm_dir + '121225123459'
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
 env_config = {"motor_control_mode":"CPG", #"CARTESIAN_PD"
                "task_env": "LR_COURSE_TASK", #  "LR_COURSE_TASK", "FWD_LOCOMOTION"
                "observation_space_mode": "LR_COURSE_OBS",
-               "terrain": None}
-env_config['render'] = True
+               "terrain": "SLOPES"}
+env_config['render'] = False
 env_config['record_video'] = False
 env_config['add_noise'] = False 
 
@@ -95,8 +95,13 @@ obs = env.reset()
 episode_reward = 0
 
 # [TODO] initialize arrays to save data from simulation 
+fwd_velocity = []
+steps = []
+x_position = []
+y_position = []
+z_position = []
 
-for i in range(2000):
+for i in range(1300):
     action, _states = model.predict(obs,deterministic=False) # sample at test time? ([TODO]: test if the outputs make sense)
     obs, rewards, dones, info = env.step(action)
     episode_reward += rewards
@@ -107,6 +112,37 @@ for i in range(2000):
         episode_reward = 0
 
     # [TODO] save data from current robot states for plots 
-    # To get base position, for example: env.envs[0].env.robot.GetBasePosition() 
+    # To get base position, for example: env.envs[0].env.robot.GetBasePosition()
+    x_position.append(env.envs[0].env.robot.GetBasePosition()[0])
+    y_position.append(env.envs[0].env.robot.GetBasePosition()[1])
+    z_position.append(env.envs[0].env.robot.GetBasePosition()[2])
+    fwd_velocity.append(env.envs[0].env.robot.GetBaseLinearVelocity()[0]) # x-velocity
+    steps.append(i)
     
 # [TODO] make plots
+# Single plot with dual y-axes: Z(x) and Y(x)
+fig, ax_left = plt.subplots(figsize=(8, 5))
+ax_right = ax_left.twinx()
+# Plot Z vs X on left axis
+line_z, = ax_left.plot(x_position, z_position, color='tab:blue', label='Z vs X')
+ax_left.set_xlabel('X Position (m)')
+ax_left.set_ylabel('Z Position (m)', color='tab:blue')
+ax_left.tick_params(axis='y', labelcolor='tab:blue')
+ax_left.grid()
+# Plot Y vs X on right axis
+line_y, = ax_right.plot(x_position, y_position, color='tab:orange', label='Y vs X')
+ax_right.set_ylabel('Y Position (m)', color='tab:orange')
+ax_right.tick_params(axis='y', labelcolor='tab:orange')
+# Combined legend
+lines = [line_z, line_y]
+labels = [l.get_label() for l in lines]
+ax_left.legend(lines, labels, loc='best')
+
+plt.figure()
+plt.plot(steps, fwd_velocity, label='Forward Velocity')
+plt.axhline(y=np.mean(fwd_velocity), color='r', linestyle='-', label='Mean Velocity')
+plt.xlabel('Steps')
+plt.ylabel('Forward Velocity (m/s)')
+plt.grid()
+plt.legend()
+plt.show()
