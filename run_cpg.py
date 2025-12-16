@@ -174,7 +174,7 @@ leg_names = ['Front Right', 'Front Left', 'Rear Right', 'Rear Left']
 state_names = ['r', 'theta', 'dr', 'dtheta']
 
 t_start = 0
-t_end = 750
+t_end = 300 #750
 
 fig, axs = plt.subplots(2, 2, figsize=(10, 8)) # 1 subplot per leg
 axs = axs.flatten()  # Flatten to 1D array for easy iteration
@@ -187,6 +187,16 @@ for state_idx in range(4):
         # Data shape: [Time, Leg, State]
         ax.plot(t[t_start:t_end], cpg_states[t_start:t_end, leg_idx, state_idx], label=leg_names[leg_idx])
     
+    if state_names[state_idx] == 'r':
+        ax.axhline(
+            y=1.2,
+            linestyle='--',
+            color='black',
+            linewidth=1.5,
+            alpha=0.5,
+            label=r'$\sqrt{\mu}$'
+        )
+
     ax.set_title(f'State: {state_names[state_idx]}')
     ax.set_xlabel('Time [s]')
     ax.legend()
@@ -196,7 +206,7 @@ plt.tight_layout()
 
 # 2.Foot Position vs Desired Foot Position (for one leg)
 t_start = 1000
-t_end = 1500
+t_end = 1250 #1500
 fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(111, projection='3d')
 
