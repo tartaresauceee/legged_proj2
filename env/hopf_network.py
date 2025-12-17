@@ -46,25 +46,69 @@ class HopfNetwork():
   Foot Order is FR, FL, RR, RL
   (Front Right, Front Left, Rear Right, Rear Left)
   """
+  ### TROT
+  # def __init__(self,
+  #               mu=1.2**2,                 # intrinsic amplitude, converges to sqrt(mu)
+  #               omega_swing=10*2*np.pi,   # frequency in swing phase (can edit)
+  #               omega_stance=8*2*np.pi,  # frequency in stance phase (can edit)
+  #               gait="TROT",             # Gait, can be TROT, WALK, PACE, BOUND, etc.
+  #               alpha=20,                # amplitude convergence factor
+  #               coupling_strength=1,     # coefficient to multiply coupling matrix
+  #               couple=True,             # whether oscillators should be coupled
+  #               time_step=0.001,         # time step 
+  #               ground_clearance=0.07,   # foot swing height 
+  #               ground_penetration=0.005, # foot stance penetration into ground 
+  #               robot_height=0.3,        # in nominal case (standing) 
+  #               des_step_len=0.05,       # desired step length 
+  #               max_step_len_rl=0.1,     # max step length, for RL scaling 
+  #               use_RL=False             # whether to learn parameters with RL 
+  #               ):
+  ### WALK
+  # def __init__(self,
+  #               mu=1**2,                 # intrinsic amplitude, converges to sqrt(mu)
+  #               omega_swing=20*2*np.pi,   # frequency in swing phase (can edit)
+  #               omega_stance=10*2*np.pi,  # frequency in stance phase (can edit)
+  #               gait="WALK",             # Gait, can be TROT, WALK, PACE, BOUND, etc.
+  #               alpha=10,                # amplitude convergence factor
+  #               coupling_strength=1,     # coefficient to multiply coupling matrix
+  #               couple=True,             # whether oscillators should be coupled
+  #               time_step=0.001,         # time step 
+  #               ground_clearance=0.07,   # foot swing height 
+  #               ground_penetration=0.005, # foot stance penetration into ground 
+  #               robot_height=0.3,        # in nominal case (standing) 
+  #               des_step_len=0.05,       # desired step length 
+  #               max_step_len_rl=0.1,     # max step length, for RL scaling 
+  #               use_RL=False             # whether to learn parameters with RL 
+  #               ):
+  ### PACE
+  # def __init__(self,
+  #               mu=1.2**2,                 # intrinsic amplitude, converges to sqrt(mu)
+  #               omega_swing=8*2*np.pi,   # frequency in swing phase (can edit)
+  #               omega_stance=8*2*np.pi,  # frequency in stance phase (can edit)
+  #               gait="PACE",             # Gait, can be TROT, WALK, PACE, BOUND, etc.
+  #               alpha=5,                # amplitude convergence factor
+  #               coupling_strength=1,     # coefficient to multiply coupling matrix
+  #               couple=True,             # whether oscillators should be coupled
+  #               time_step=0.001,         # time step 
+  #               ground_clearance=0.07,   # foot swing height 
+  #               ground_penetration=0.005, # foot stance penetration into ground 
+  #               robot_height=0.3,        # in nominal case (standing) 
+  #               des_step_len=0.1,       # desired step length 
+  #               max_step_len_rl=0.1,     # max step length, for RL scaling 
+  #               use_RL=False             # whether to learn parameters with RL 
+  #               ):
+  ### BOUND
   def __init__(self,
-                mu=1.2**2,                 # intrinsic amplitude, converges to sqrt(mu)
-                # omega_swing=5*2*np.pi,   # frequency in swing phase (can edit)
-                # omega_stance=2*2*np.pi,  # frequency in stance phase (can edit)
-                omega_swing=8*2*np.pi,   # frequency in swing phase (TROT)
-                omega_stance=10*2*np.pi,  # frequency in stance phase (TROT)
-                # omega_swing=8*2*np.pi,   # frequency in swing phase (WALK)
-                # omega_stance=8*2*np.pi,  # frequency in stance phase (WALK)
-                # omega_swing=8*2*np.pi,   # frequency in swing phase (PACE)
-                # omega_stance=8*2*np.pi,  # frequency in stance phase (PACE)
-                # omega_swing=4*2*np.pi,   # frequency in swing phase (BOUND)
-                # omega_stance=4*2*np.pi,  # frequency in stance phase (BOUND)
-                gait="TROT",             # Gait, can be TROT, WALK, PACE, BOUND, etc.
-                alpha=20,                # amplitude convergence factor
+                mu=0.5**2,                 # intrinsic amplitude, converges to sqrt(mu)
+                omega_swing=8*2*np.pi,   # frequency in swing phase (can edit)
+                omega_stance=4*2*np.pi,  # frequency in stance phase (can edit)
+                gait="BOUND",             # Gait, can be TROT, WALK, PACE, BOUND, etc.
+                alpha=10,                # amplitude convergence factor
                 coupling_strength=1,     # coefficient to multiply coupling matrix
                 couple=True,             # whether oscillators should be coupled
                 time_step=0.001,         # time step 
-                ground_clearance=0.07,   # foot swing height 
-                ground_penetration=0.005, # foot stance penetration into ground 
+                ground_clearance=0.035,   # foot swing height 
+                ground_penetration=0.01, # foot stance penetration into ground 
                 robot_height=0.3,        # in nominal case (standing) 
                 des_step_len=0.05,       # desired step length 
                 max_step_len_rl=0.1,     # max step length, for RL scaling 
@@ -84,6 +128,7 @@ class HopfNetwork():
     self._coupling_strength = coupling_strength
     self._dt = time_step
     self._set_gait(gait)
+    self._gait = gait
 
     # set oscillator initial conditions  
     self.X[0,:] = np.random.rand(4) * .1

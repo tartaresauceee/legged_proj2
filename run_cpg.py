@@ -168,15 +168,17 @@ for j in range(TEST_STEPS):
 #####################################################
 # [TODO] Create your plots
 
+gait = env._cpg._gait
+
 # 1. CPG States
 
 leg_names = ['Front Right', 'Front Left', 'Rear Right', 'Rear Left']
 state_names = ['r', 'theta', 'dr', 'dtheta']
 
 t_start = 0
-t_end = 300 #750
+t_end = 1750
 
-fig, axs = plt.subplots(2, 2, figsize=(10, 8)) # 1 subplot per leg
+fig, axs = plt.subplots(2, 2, figsize=(12, 6)) # 1 subplot per leg
 axs = axs.flatten()  # Flatten to 1D array for easy iteration
 
 for state_idx in range(4):
@@ -189,24 +191,30 @@ for state_idx in range(4):
     
     if state_names[state_idx] == 'r':
         ax.axhline(
-            y=1.2,
+            y=np.sqrt(env._cpg._mu),
             linestyle='--',
             color='black',
-            linewidth=1.5,
+            linewidth=3,
             alpha=0.5,
             label=r'$\sqrt{\mu}$'
         )
+      
+    # add subplot letter (a), (b), ...
+    subplot_label = f"({chr(ord('a') + state_idx)})"
+    # ax.text(0.02, 0.95, subplot_label, transform=ax.transAxes,
+    #         fontsize=12, fontweight='bold', va='top')
 
-    ax.set_title(f'State: {state_names[state_idx]}')
+    ax.set_title(f'{subplot_label}  State: {state_names[state_idx]}')
     ax.set_xlabel('Time [s]')
     ax.legend()
     ax.grid()
 
-plt.tight_layout()
+fig.tight_layout()
+fig.savefig(f'plots/cpg_states_{gait}')
 
 # 2.Foot Position vs Desired Foot Position (for one leg)
 t_start = 1000
-t_end = 1250 #1500
+t_end = 1750 #1500
 fig = plt.figure(figsize=(10, 8))
 ax = fig.add_subplot(111, projection='3d')
 
@@ -220,12 +228,13 @@ ax.set_title('Foot Trajectory Tracking (3D)')
 ax.legend()
 
 # Plot Axes
-fig, axs = plt.subplots(3, 1, figsize=(10, 10), sharex=True)
+fig, axs = plt.subplots(3, 1, figsize=(12, 6), sharex=True)
 coords = ['X', 'Y', 'Z']
 
 for i in range(3):
     axs[i].plot(t[t_start:t_end], des_foot_pos[t_start:t_end, i], 'k--', label='Desired')
     axs[i].plot(t[t_start:t_end], foot_pos[t_start:t_end, i], 'r-', label='Actual')
+    axs[i].fill_between(t[t_start:t_end], des_foot_pos[t_start:t_end, i], foot_pos[t_start:t_end, i], color='red', alpha=0.3, label='Error')
     axs[i].set_ylabel(f'{coords[i]} Position [m]')
     axs[i].grid(True)
     axs[i].legend()
@@ -233,23 +242,28 @@ for i in range(3):
 axs[2].set_xlabel('Time [s]')
 axs[0].set_title('Foot Position Tracking per Coordinate')
 
-plt.tight_layout()
+fig.tight_layout()
+fig.savefig(f'plots/foot_pos_cpg_{gait}')
+
 
 # 3. Joint Angle
-fig, axs = plt.subplots(3, 1, figsize=(10, 10), sharex=True)
+fig, axs = plt.subplots(3, 1, figsize=(12, 6), sharex=True)
 coords = ['Hip', 'Thigh', 'Calf']
 
 for i in range(3):
     axs[i].plot(t[t_start:t_end], des_joint_angle[t_start:t_end, i], 'k--', label='Desired')
     axs[i].plot(t[t_start:t_end], joint_angle[t_start:t_end, i], 'r-', label='Actual')
+    axs[i].fill_between(t[t_start:t_end], des_joint_angle[t_start:t_end, i], joint_angle[t_start:t_end, i], color='red', alpha=0.3, label='Error')
+
     axs[i].set_ylabel(f'{coords[i]} Angle [rad]')
     axs[i].grid(True)
     axs[i].legend()
 
 axs[2].set_xlabel('Time [s]')
 axs[0].set_title('Joint Angle Tracking')
+fig.tight_layout()
+fig.savefig(f'plots/joint_angle_cpg_{gait}')
 
-plt.show()
 
 # Base Velocity
 print(f"Velocity [x]: \n\tmin: {np.min(base_vel[:,0])}\n\tmax: {np.max(base_vel[:,0])}\n\tmean: {np.mean(base_vel[:,0])}")
