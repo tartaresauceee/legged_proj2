@@ -433,13 +433,7 @@ class QuadrupedGymEnv(gym.Env):
     yaw_reward = -0.2 * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[2]) 
     
     # don't drift laterally 
-    drift_reward = -0.1 * abs(self.robot.GetBasePosition()[1]) 
-    
-    # Penalize if robot exceed -45 and 45 degrees in pitch
-    # pitch_penalty = 0
-    # pitch = self.robot.GetBaseOrientationRollPitchYaw()[1]
-    # if pitch < -np.pi/4 or pitch > np.pi/4:
-    #   pitch_penalty = -0.5 * pitch
+    drift_reward = -0.4 * abs(self.robot.GetBasePosition()[1]) # Previous for PPO 28 was -0.1*
 
     # minimize energy 
     energy_reward = 0 
@@ -453,7 +447,7 @@ class QuadrupedGymEnv(gym.Env):
             - 0.05 * energy_reward \
             - 0.2 * np.linalg.norm(self.robot.GetBaseOrientation() - np.array([0,0,0,1]))
 
-    return max(reward,0) # keep rewards positive
+    return reward # Removed the max with 0 to allow negative rewards (last was fore PPO 28)
   
   def _reward(self):
     """ Get reward depending on task"""

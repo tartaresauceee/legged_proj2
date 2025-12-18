@@ -65,7 +65,7 @@ env_config = {"motor_control_mode":"CPG", #"CARTESIAN_PD"
                "task_env": "LR_COURSE_TASK", #  "LR_COURSE_TASK", "FWD_LOCOMOTION"
                "observation_space_mode": "LR_COURSE_OBS",
                "terrain": "SLOPES"}
-env_config['render'] = False
+env_config['render'] = True
 env_config['record_video'] = False
 env_config['add_noise'] = False 
 
@@ -139,8 +139,9 @@ labels = [l.get_label() for l in lines]
 ax_left.legend(lines, labels, loc='best')
 
 plt.figure()
-plt.plot(steps, fwd_velocity, label='Forward Velocity')
-plt.axhline(y=np.mean(fwd_velocity), color='r', linestyle='-', label='Mean Velocity')
+plt.plot(steps, fwd_velocity, label=r'$v_x$')
+mean_vel = np.mean(fwd_velocity)
+plt.axhline(y=mean_vel, color='k', linestyle='--', label=fr'$\bar{{v}}_x = {mean_vel:.2f}m/s$')
 plt.xlabel('Steps')
 plt.ylabel('Forward Velocity (m/s)')
 plt.grid()
