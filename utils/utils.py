@@ -179,7 +179,7 @@ def plot_curves(xy_list, xaxis, title):
     :param title: (str) the title of the plot
     """
 
-    plt.figure(figsize=(8, 2))
+    plt.figure(figsize=(6, 4))
     maxx = max(xy[0][-1] for xy in xy_list)
     minx = 0
     for (i, (x, y)) in enumerate(xy_list):
@@ -217,6 +217,7 @@ def plot_results(dirs, num_timesteps, xaxis, task_name):
     xy_list = [ts2xy(timesteps_item, xaxis) for timesteps_item in tslist]
     plot_curves(xy_list, xaxis, task_name+'Rewards')
     plt.ylabel("Episode Rewards")
+    plt.ylim(bottom=-100)
     #plt.figure(2)
     xy_list = [ts2xy(timesteps_item, xaxis, Y_EPLEN) for timesteps_item in tslist]
     plot_curves(xy_list, xaxis, task_name+'Ep Len')

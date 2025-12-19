@@ -111,8 +111,18 @@ for i in range(2000):
     vel[i] = env.envs[0].env.robot.GetBaseLinearVelocity()[0]
     
 # [TODO] make plots
-figure = plt.figure()
+figure = plt.figure(figsize=(8,4))
 
-plt.plot(range(2000), vel)
+mean = np.mean(vel)
 
+plt.plot(np.arange(2000)*0.01, vel, label=r"$v_x$")
+xmin, xmax = plt.xlim()
+plt.hlines(mean, xmin=xmin, xmax=xmax, alpha=0.6, linestyles='--',colors='k', label=fr'$\bar{{v}}_x={mean:.2f}\,\mathrm{{m/s}}$')
+plt.xlabel("Time [s]")
+plt.ylabel("Forward Velocity [m/s]")
+plt.title("Base Forward Velocity")
+plt.grid(True)
+plt.legend(loc='best')
+
+plt.tight_layout()
 plt.show()
